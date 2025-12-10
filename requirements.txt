@@ -1,0 +1,32 @@
+# ThirdEye - Advanced OSINT Reconnaissance Tool
+# Author: sid7.py
+
+# Core dependencies
+tldextract>=4.0.0
+argparse>=1.4.0
+requests>=2.28.0
+colorama>=0.4.6
+beautifulsoup4>=4.11.0
+
+# Search engine automation
+xnldorker>=0.5.0
+googlesearch-python>=1.2.0
+
+# Output and reporting
+tabulate>=0.9.0
+PyYAML>=6.0
+python-dotenv>=1.0.0
+
+# Networking
+dnspython>=2.3.0
+urllib3>=1.26.0
+
+# Development dependencies (optional)
+# pylint>=2.17.0
+# autopep8>=2.0.0
+
+# Platform specific
+# Install system packages if needed:
+# On Ubuntu/Debian: sudo apt-get install python3-pip python3-dev
+# On macOS: brew install python3
+# On Windows: Install Python 3.9+ from python.org
