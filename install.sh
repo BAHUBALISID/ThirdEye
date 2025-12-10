@@ -61,8 +61,8 @@ python3 -c "import tldextract, argparse, requests, colorama; print('[✓] All co
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                   Installation Complete!                     ║"
-echo "║                                                              ║"
-echo "║  Usage: ./thirdeye.py -d example.com                         ║"
-echo "║  Or:     thirdeye -d example.com (if symlink created)       ║"
+echo "║                   Installation Complete!                                ║"
+echo "║                                                                         ║"
+echo "║  Usage: ./thirdeye.py -d example.com                                    ║"
+echo "║  Or:     thirdeye -d example.com (if symlink created)                   ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
