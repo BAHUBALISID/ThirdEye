@@ -52,6 +52,6 @@ ThirdEye automates the most powerful Google Dorks into categorized reconnaissanc
 ### Setup
 
 ```bash
-git clone https://github.com/yourusername/ThirdEye.git
+git clone https://github.com/BAHUBALISID/ThirdEye.git
 cd ThirdEye
 pip install -r requirements.txt
