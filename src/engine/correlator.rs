@@ -1,6 +1,5 @@
 use crate::engine::ScanResult;
-use crate::mail::models::{EmailFinding, DomainFindings};
-use std::collections::{HashMap, HashSet};
+use crate::mail::models::EmailFinding;
 
 pub struct Correlator {
     patterns: Vec<CorrelationPattern>,
@@ -40,15 +39,17 @@ impl Correlator {
             findings.push(temporal);
         }
         
+        let confidence = self.calculate_confidence(&findings);
+        
         CorrelationResult {
             target: results.target.clone(),
             findings,
-            confidence: self.calculate_confidence(&findings),
+            confidence,
         }
     }
     
     fn detect_password_reuse(&self, email_findings: &[EmailFinding]) -> Option<CorrelationFinding> {
-        let mut password_map: HashMap<String, Vec<String>> = HashMap::new();
+        let mut password_map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
         
         for finding in email_findings {
             if let Some(passwords) = &finding.raw_credentials {
@@ -68,11 +69,15 @@ impl Correlator {
             .collect();
         
         if !reuse_groups.is_empty() {
+            let evidence: Vec<String> = reuse_groups.iter()
+                .map(|(password, emails)| format!("Password '{}' used by: {}", password, emails.join(", ")))
+                .collect();
+            
             Some(CorrelationFinding {
                 pattern: "PASSWORD_REUSE".to_string(),
                 description: format!("Password reuse detected across {} accounts", reuse_groups.len()),
                 severity: "MEDIUM".to_string(),
-                evidence: reuse_groups,
+                evidence,
             })
         } else {
             None
@@ -85,7 +90,7 @@ impl Correlator {
         web_data: &crate::engine::WebData,
     ) -> Option<CorrelationFinding> {
         // Extract technologies from web scan
-        let web_techs: HashSet<_> = web_data.technologies
+        let web_techs: std::collections::HashSet<_> = web_data.technologies
             .iter()
             .map(|t| t.name.to_lowercase())
             .collect();
@@ -97,7 +102,7 @@ impl Correlator {
             for tech in &web_techs {
                 if finding.email.contains(tech) || 
                    finding.metadata.values().any(|v| v.contains(tech)) {
-                    tech_matches.push((tech.clone(), finding.email.clone()));
+                    tech_matches.push(format!("Email {} contains technology reference: {}", finding.email, tech));
                 }
             }
         }
@@ -105,8 +110,7 @@ impl Correlator {
         if !tech_matches.is_empty() {
             Some(CorrelationFinding {
                 pattern: "TECHNOLOGY_CORRELATION".to_string(),
-                description: format!("Breach data correlates with web technologies: {:?}", 
-                    tech_matches.iter().map(|(t, _)| t).collect::<Vec<_>>()),
+                description: format!("Breach data correlates with web technologies: {} matches", tech_matches.len()),
                 severity: "LOW".to_string(),
                 evidence: tech_matches,
             })
@@ -134,10 +138,11 @@ impl Correlator {
                                 cert_to.and_hms_opt(0, 0, 0).unwrap(), chrono::Utc);
                             
                             if last_seen >= cert_from_dt && last_seen <= cert_to_dt {
-                                temporal_matches.push((
-                                    finding.email.clone(),
-                                    last_seen.to_rfc3339(),
-                                    cert.issuer.clone(),
+                                temporal_matches.push(format!(
+                                    "Email {} breached during certificate validity ({}-{})",
+                                    finding.email,
+                                    cert.valid_from,
+                                    cert.valid_to
                                 ));
                             }
                         }
@@ -182,11 +187,12 @@ pub struct CorrelationResult {
     pub confidence: f32,
 }
 
+#[derive(Clone)]  // Added Clone
 pub struct CorrelationFinding {
     pub pattern: String,
     pub description: String,
     pub severity: String,
-    pub evidence: Vec<(String, String)>,
+    pub evidence: Vec<String>,  // Changed to Vec<String>
 }
 
 enum CorrelationPattern {
