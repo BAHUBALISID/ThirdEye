@@ -23,10 +23,10 @@ async fn main() -> Result<()> {
     }
     
     match cli.command {
-        Commands::Scan { target, recon, web, mail } => {
-            let runner = ScanRunner::new();
-            runner.scan(&target, recon, web, mail).await?;
-        }
+    Commands::Scan { target, recon, web, mail } => {
+        let mut runner = ScanRunner::new();  
+        runner.scan(&target, recon, web, mail).await?;
+    }
         Commands::Mail { target, file, domain, password_reuse, limit } => {
             let mut scanner = MailScanner::new();  // Changed to mut
             
