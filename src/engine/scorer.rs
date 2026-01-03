@@ -191,3 +191,4 @@ impl RiskLevel {
         scorer.get_risk_level(score)
     }
 }
+
