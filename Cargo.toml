@@ -14,7 +14,7 @@ full = [
     "regex",
     "indicatif",
     "scraper",
-    "trust-dns-resolver",
+    "trust-dns-resolver"
 ]
 minimal = []
 
