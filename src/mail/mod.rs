@@ -4,11 +4,11 @@ pub mod models;
 pub mod parser;
 pub mod risk;
 
-use api::{ApiManager, BreachApiClient, HIBPClient, ProxyNovaClient};
+use api::{ApiManager, HIBPClient, ProxyNovaClient};
 use local::LocalScanner;
-use models::{EmailFinding, DomainFindings, BreachRecord};
+use models::{EmailFinding, DomainFindings, BreachRecord, BreachSource};
 use risk::RiskAssessor;
-use output::Formatter;
+use crate::output::Formatter;
 use anyhow::Result;
 use std::path::Path;
 use std::collections::{HashMap, HashSet};
@@ -39,12 +39,12 @@ impl MailScanner {
             api_manager,
             local_scanner: LocalScanner::new(),
             risk_assessor: RiskAssessor::new(),
-            concurrency_limiter: Arc::new(Semaphore::new(10)), // Limit concurrent operations
+            concurrency_limiter: Arc::new(Semaphore::new(10)),
         }
     }
     
     pub async fn scan_email(
-        &self,
+        &mut self,
         email: &str,
         local_file: Option<&Path>,
         password_reuse: bool,
@@ -86,7 +86,7 @@ impl MailScanner {
     }
     
     pub async fn scan_domain(
-        &self,
+        &mut self,
         domain: &str,
         local_file: Option<&Path>,
         limit: u32,
@@ -143,14 +143,14 @@ impl MailScanner {
     }
     
     // Simplified versions for engine integration
-    pub async fn scan_email_simple(&self, email: &str) -> Result<Vec<EmailFinding>> {
+    pub async fn scan_email_simple(&mut self, email: &str) -> Result<Vec<EmailFinding>> {
         let records = self.api_manager.query_email(email).await?;
         let unique_records = self.deduplicate_records(records);
         let finding = self.create_email_finding(email, unique_records, false)?;
         Ok(vec![finding])
     }
     
-    pub async fn scan_domain_simple(&self, domain: &str) -> Result<DomainFindings> {
+    pub async fn scan_domain_simple(&mut self, domain: &str) -> Result<DomainFindings> {
         let records = self.api_manager.query_domain(domain).await?;
         let mut email_map: HashMap<String, Vec<BreachRecord>> = HashMap::new();
         
@@ -209,7 +209,7 @@ impl MailScanner {
         // Process each breach record
         for record in records {
             // Add source
-            finding.sources.push(api::BreachSource {
+            finding.sources.push(BreachSource {
                 name: record.source.clone(),
                 api_source: true,
                 local_file: None,
@@ -231,7 +231,7 @@ impl MailScanner {
                 }
             } else if record.hash.is_some() {
                 finding.exposures.push(models::Exposure::HashedCredential(
-                    record.hash_type.unwrap_or(models::HashType::Unknown)
+                    record.hash_type.clone().unwrap_or(models::HashType::Unknown)
                 ));
             } else {
                 finding.exposures.push(models::Exposure::EmailOnly);
@@ -251,7 +251,7 @@ impl MailScanner {
             if let Some(hash) = record.hash {
                 finding.password_hashes.push(models::PasswordHash {
                     hash,
-                    hash_type: record.hash_type.unwrap_or(models::HashType::Unknown),
+                    hash_type: record.hash_type.clone().unwrap_or(models::HashType::Unknown),
                     salt: None,
                     source: record.source.clone(),
                 });
@@ -303,7 +303,7 @@ impl MailScanner {
             password_reuse,
             unique_passwords,
             risk_score: domain_risk,
-            employee_count_estimate: None, // Could be estimated from email patterns
+            employee_count_estimate: None,
         })
     }
 }
