@@ -110,29 +110,30 @@ impl LocalScanner {
             drop(tx); // Close channel
         });
         
-        // Collect results
-        let mut found_records = Vec::new();
-        while let Some(record) = rx.recv().await {
-            found_records.push(record);
-        }
         
-        if let Some(pb) = pb {
-            pb.finish_and_clear();
-        }
-        
-        Ok(LocalScanResult {
-            file_path: file_path.to_string_lossy().to_string(),
-            records_found: found_records,
-            stats: LocalScanStats {
-                file_path: file_path.to_string_lossy().to_string(),
-                bytes_scanned: bytes_read.load(Ordering::Relaxed),
-                records_processed: lines_read.load(Ordering::Relaxed),
-                emails_found: found_records.len() as u64,
-                unique_emails: 0,
-                scan_duration: std::time::Duration::default(),
-            },
-        })
-    }
+let mut found_records = Vec::new();
+while let Some(record) = rx.recv().await {
+    found_records.push(record);
+}
+
+if let Some(pb) = pb {
+    pb.finish_and_clear();
+}
+
+let records_found_len = found_records.len();  // Store length before moving
+
+Ok(LocalScanResult {
+    file_path: file_path.to_string_lossy().to_string(),
+    records_found: found_records,
+    stats: LocalScanStats {
+        file_path: file_path.to_string_lossy().to_string(),
+        bytes_scanned: bytes_read.load(Ordering::Relaxed),
+        records_processed: lines_read.load(Ordering::Relaxed),
+        emails_found: records_found_len as u64,  // Use stored length
+        unique_emails: 0,
+        scan_duration: std::time::Duration::default(),
+    },
+})
     
     pub fn stream_file(
         &self,
@@ -195,3 +196,4 @@ pub struct LocalScanResult {
     pub records_found: Vec<BreachRecord>,
     pub stats: LocalScanStats,
 }
+
