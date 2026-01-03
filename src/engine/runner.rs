@@ -25,7 +25,7 @@ impl ScanRunner {
         }
     }
     
-    pub async fn scan(&self, target: &str, recon: bool, web: bool, mail: bool) -> Result<()> {
+    pub async fn scan(&mut self, target: &str, recon: bool, web: bool, mail: bool) -> Result<()> {
         let mut results = crate::engine::ScanResult {
             target: target.to_string(),
             mail_findings: None,
@@ -67,7 +67,7 @@ impl ScanRunner {
         results.overall_risk = self.scorer.calculate_overall_risk(&results);
         
         // Output results
-        let formatter = Formatter::new(false); // Default to text output
+        let formatter = Formatter::new(false);
         formatter.print_scan_results(&results);
         
         // Set exit code based on findings
