@@ -1,7 +1,8 @@
 use std::time::{Duration, Instant};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use anyhow::Result;
+use std::collections::HashMap;
 
 pub struct ProgressTracker {
     start_time: Instant,
@@ -120,14 +121,12 @@ pub fn calculate_hash(data: &[u8], algorithm: &str) -> String {
             format!("{:x}", digest)
         }
         "sha1" => {
-            use sha1::{Sha1, Digest};
-            let mut hasher = Sha1::new();
+            let mut hasher = sha1::Sha1::new();
             hasher.update(data);
             format!("{:x}", hasher.finalize())
         }
         "sha256" => {
-            use sha2::{Sha256, Digest};
-            let mut hasher = Sha256::new();
+            let mut hasher = sha2::Sha256::new();
             hasher.update(data);
             format!("{:x}", hasher.finalize())
         }
