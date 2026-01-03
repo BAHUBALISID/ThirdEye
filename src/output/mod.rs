@@ -1,5 +1,5 @@
-use crate::engine::{ScanResult, RiskLevel};
-use crate::mail::models::{EmailFinding, DomainFindings};
+use crate::engine::ScanResult;
+use crate::engine::scorer::RiskLevel;  // Fixed import
 use serde_json::json;
 
 pub struct Formatter {
@@ -11,7 +11,7 @@ impl Formatter {
         Self { json_output }
     }
     
-    pub fn print_email_finding(&self, finding: &EmailFinding, quiet: bool) {
+    pub fn print_email_finding(&self, finding: &crate::mail::models::EmailFinding, quiet: bool) {
         if self.json_output {
             self.print_email_json(finding);
         } else {
@@ -19,7 +19,7 @@ impl Formatter {
         }
     }
     
-    pub fn print_domain_findings(&self, findings: &DomainFindings, quiet: bool) {
+    pub fn print_domain_findings(&self, findings: &crate::mail::models::DomainFindings, quiet: bool) {
         if self.json_output {
             self.print_domain_json(findings);
         } else {
@@ -35,7 +35,7 @@ impl Formatter {
         }
     }
     
-    fn print_email_text(&self, finding: &EmailFinding, quiet: bool) {
+    fn print_email_text(&self, finding: &crate::mail::models::EmailFinding, quiet: bool) {
         if quiet {
             println!("{}", finding.email);
             return;
@@ -75,7 +75,7 @@ impl Formatter {
         println!("└─────────────────────────────────────────────────────┘");
     }
     
-    fn print_domain_text(&self, findings: &DomainFindings, quiet: bool) {
+    fn print_domain_text(&self, findings: &crate::mail::models::DomainFindings, quiet: bool) {
         if quiet {
             for email in &findings.emails {
                 println!("{}", email.email);
@@ -110,7 +110,7 @@ impl Formatter {
             
             let mut sorted_emails: Vec<_> = findings.emails.iter()
                 .collect();
-            sorted_emails.sort_by(|a, b| b.risk_score.partial_cmp(&a.risk_score).unwrap());
+            sorted_emails.sort_by(|a, b| b.risk_score.partial_cmp(&a.risk_score).unwrap_or(std::cmp::Ordering::Equal));
             
             for (i, email) in sorted_emails.iter().take(5).enumerate() {
                 let risk = RiskLevel::from_score(email.risk_score);
@@ -183,7 +183,7 @@ impl Formatter {
         }
     }
     
-    fn print_email_json(&self, finding: &EmailFinding) {
+    fn print_email_json(&self, finding: &crate::mail::models::EmailFinding) {
         let json = json!({
             "type": "email_finding",
             "email": finding.email,
@@ -199,7 +199,7 @@ impl Formatter {
         println!("{}", serde_json::to_string_pretty(&json).unwrap());
     }
     
-    fn print_domain_json(&self, findings: &DomainFindings) {
+    fn print_domain_json(&self, findings: &crate::mail::models::DomainFindings) {
         let json = json!({
             "type": "domain_findings",
             "domain": findings.domain,
@@ -281,27 +281,5 @@ fn mask_password(password: &str) -> String {
             &password[..2], 
             &password[password.len()-2..]
         )
-    }
-}
-
-impl RiskLevel {
-    fn from_score(score: f32) -> Self {
-        match score {
-            s if s >= 0.9 => RiskLevel::Critical,
-            s if s >= 0.75 => RiskLevel::High,
-            s if s >= 0.5 => RiskLevel::Medium,
-            s if s >= 0.25 => RiskLevel::Low,
-            _ => RiskLevel::Info,
-        }
-    }
-    
-    fn as_str(&self) -> &'static str {
-        match self {
-            RiskLevel::Critical => "CRITICAL",
-            RiskLevel::High => "HIGH",
-            RiskLevel::Medium => "MEDIUM",
-            RiskLevel::Low => "LOW",
-            RiskLevel::Info => "INFO",
-        }
     }
 }
