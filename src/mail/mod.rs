@@ -26,7 +26,6 @@ impl MailScanner {
     pub fn new() -> Self {
         let mut api_manager = ApiManager::new();
         
-        // Add API clients if configured
         if let Ok(hibp_key) = std::env::var("HIBP_API_KEY") {
             api_manager.add_client(Box::new(HIBPClient::new(hibp_key)));
         }
@@ -48,7 +47,7 @@ impl MailScanner {
         email: &str,
         local_file: Option<&Path>,
         password_reuse: bool,
-        limit: u32,
+        _limit: u32,
         json_output: bool,
         quiet: bool,
     ) -> Result<()> {
@@ -65,6 +64,7 @@ impl MailScanner {
         // Scan local file if provided
         if let Some(file_path) = local_file {
             let local_result = self.local_scanner.scan_file(file_path, Some(email), None).await?;
+            let records_found = local_result.records_found.len();
             all_records.extend(local_result.records_found);
             
             if !quiet {
@@ -89,7 +89,7 @@ impl MailScanner {
         &mut self,
         domain: &str,
         local_file: Option<&Path>,
-        limit: u32,
+        _limit: u32,
         json_output: bool,
         quiet: bool,
     ) -> Result<()> {
@@ -106,10 +106,11 @@ impl MailScanner {
         // Scan local file for domain
         if let Some(file_path) = local_file {
             let local_result = self.local_scanner.scan_file(file_path, None, Some(domain)).await?;
+            let records_found = local_result.records_found.len();
             all_records.extend(local_result.records_found);
             
             if !quiet {
-                eprintln!("Local scan: found {} records for domain", local_result.records_found.len());
+                eprintln!("Local scan: found {} records for domain", records_found);
             }
         }
         
@@ -122,10 +123,6 @@ impl MailScanner {
         // Create findings for each email
         let mut email_findings = Vec::new();
         for (email, records) in email_map {
-            if records.len() > limit as usize {
-                continue; // Skip if too many results
-            }
-            
             let unique_records = self.deduplicate_records(records);
             if let Ok(finding) = self.create_email_finding(&email, unique_records, true) {
                 email_findings.push(finding);
