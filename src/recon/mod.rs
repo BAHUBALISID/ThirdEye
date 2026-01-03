@@ -4,11 +4,10 @@ use trust_dns_resolver::{
     config::{ResolverConfig, ResolverOpts},
     TokioAsyncResolver,
 };
-use whois_rust::{Whois, WhoIsLookupOptions};
+// Remove whois_rust for now - use simpler implementation
 
 pub struct ReconScanner {
     dns_resolver: TokioAsyncResolver,
-    whois_client: Whois,
 }
 
 impl ReconScanner {
@@ -18,12 +17,8 @@ impl ReconScanner {
             ResolverOpts::default(),
         ).expect("Failed to create DNS resolver");
         
-        let whois = Whois::from_string_safe(include_str!("../../assets/servers.json"))
-            .expect("Failed to create WHOIS client");
-        
         Self {
             dns_resolver: resolver,
-            whois_client: whois,
         }
     }
     
@@ -39,8 +34,8 @@ impl ReconScanner {
             recon_data.dns_records = dns_records;
         }
         
-        // WHOIS lookup
-        if let Ok(whois_info) = self.scan_whois(target).await {
+        // WHOIS lookup - simplified for now
+        if let Ok(whois_info) = self.scan_whois_simple(target).await {
             recon_data.whois_info = Some(whois_info);
         }
         
@@ -91,18 +86,51 @@ impl ReconScanner {
         Ok(records)
     }
     
-    async fn scan_whois(&self, target: &str) -> Result<crate::engine::WhoisInfo> {
-        let options = WhoIsLookupOptions::from_string(target)
-            .expect("Failed to create WHOIS options");
+    async fn scan_whois_simple(&self, target: &str) -> Result<crate::engine::WhoisInfo> {
+        // Simple WHOIS implementation using external service
+        let client = reqwest::Client::new();
+        let url = format!("https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=demo&domainName={}&outputFormat=JSON", target);
         
-        let result = self.whois_client.lookup_async(options).await?;
+        let response = client.get(&url).send().await;
         
-        Ok(crate::engine::WhoisInfo {
-            registrar: extract_whois_field(&result, "Registrar"),
-            creation_date: extract_whois_field(&result, "Creation Date"),
-            expiration_date: extract_whois_field(&result, "Registry Expiry Date"),
-            name_servers: extract_whois_list(&result, "Name Server"),
-        })
+        match response {
+            Ok(resp) if resp.status().is_success() => {
+                if let Ok(json) = resp.json::<serde_json::Value>().await {
+                    let whois_info = crate::engine::WhoisInfo {
+                        registrar: json.pointer("/WhoisRecord/registrarName")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        creation_date: json.pointer("/WhoisRecord/createdDate")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        expiration_date: json.pointer("/WhoisRecord/expiresDate")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        name_servers: json.pointer("/WhoisRecord/nameServers/hostNames")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| arr.iter()
+                                .filter_map(|v| v.as_str())
+                                .map(|s| s.to_string())
+                                .collect())
+                            .unwrap_or_default(),
+                    };
+                    Ok(whois_info)
+                } else {
+                    Ok(crate::engine::WhoisInfo {
+                        registrar: None,
+                        creation_date: None,
+                        expiration_date: None,
+                        name_servers: Vec::new(),
+                    })
+                }
+            }
+            _ => Ok(crate::engine::WhoisInfo {
+                registrar: None,
+                creation_date: None,
+                expiration_date: None,
+                name_servers: Vec::new(),
+            }),
+        }
     }
     
     async fn scan_certificates(&self, target: &str) -> Result<Vec<crate::engine::CertificateInfo>> {
@@ -139,31 +167,4 @@ impl ReconScanner {
         
         Ok(certificates)
     }
-}
-
-fn extract_whois_field(whois_text: &str, field: &str) -> Option<String> {
-    for line in whois_text.lines() {
-        if line.starts_with(field) {
-            return line.splitn(2, ':')
-                .nth(1)
-                .map(|s| s.trim().to_string());
-        }
-    }
-    None
-}
-
-fn extract_whois_list(whois_text: &str, field: &str) -> Vec<String> {
-    let mut servers = Vec::new();
-    
-    for line in whois_text.lines() {
-        if line.starts_with(field) {
-            if let Some(server) = line.splitn(2, ':')
-                .nth(1)
-                .map(|s| s.trim().to_string()) {
-                servers.push(server);
-            }
-        }
-    }
-    
-    servers
 }
