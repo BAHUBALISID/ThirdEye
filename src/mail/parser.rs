@@ -1,12 +1,9 @@
 use crate::mail::models::{BreachRecord, HashType};
 use regex::Regex;
-use std::collections::HashMap;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use chrono::{DateTime, Utc};
-use md5;
-use sha1::{Sha1, Digest as Sha1Digest};
-use sha2::{Sha256, Digest as Sha256Digest};
 
+#[derive(Clone)]
 pub struct BreachParser {
     email_regex: Regex,
     md5_regex: Regex,
@@ -47,8 +44,6 @@ impl BreachParser {
     }
     
     fn parse_email_password(&self, line: &str) -> Option<BreachRecord> {
-        // Format: email:password
-        // Format: email:hash
         let parts: Vec<&str> = line.splitn(2, ':').collect();
         if parts.len() != 2 {
             return None;
@@ -57,7 +52,7 @@ impl BreachParser {
         let email = parts[0].trim().to_lowercase();
         let credential = parts[1].trim();
         
-        if !self.is_valid_email(&email) {
+        if !self.email_regex.is_match(&email) {
             return None;
         }
         
@@ -79,14 +74,13 @@ impl BreachParser {
             hash_type,
             source: "LocalFile".to_string(),
             breach_date: None,
-            additional_data: HashMap::from([
+            additional_data: std::collections::HashMap::from([
                 ("format".to_string(), "email:password".to_string()),
             ]),
         })
     }
     
     fn parse_json_line(&self, line: &str) -> Option<BreachRecord> {
-        // Try to parse as JSON
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
             let email = json.get("email")
                 .or_else(|| json.get("username"))
@@ -128,7 +122,7 @@ impl BreachParser {
                     hash_type,
                     source: "LocalJSON".to_string(),
                     breach_date,
-                    additional_data: HashMap::new(),
+                    additional_data: std::collections::HashMap::new(),
                 });
             }
         }
@@ -137,11 +131,9 @@ impl BreachParser {
     }
     
     fn parse_hash_format(&self, line: &str) -> Option<BreachRecord> {
-        // Check if line contains an email
         if let Some(email_match) = self.email_regex.find(line) {
             let email = email_match.as_str().to_lowercase();
             
-            // Look for hash in the line
             let hash_candidates: Vec<&str> = line.split_whitespace().collect();
             
             for candidate in hash_candidates {
@@ -153,7 +145,7 @@ impl BreachParser {
                         hash_type: Some(HashType::MD5),
                         source: "LocalHashFile".to_string(),
                         breach_date: None,
-                        additional_data: HashMap::new(),
+                        additional_data: std::collections::HashMap::new(),
                     });
                 } else if self.sha1_regex.is_match(candidate) {
                     return Some(BreachRecord {
@@ -163,7 +155,7 @@ impl BreachParser {
                         hash_type: Some(HashType::SHA1),
                         source: "LocalHashFile".to_string(),
                         breach_date: None,
-                        additional_data: HashMap::new(),
+                        additional_data: std::collections::HashMap::new(),
                     });
                 } else if self.sha256_regex.is_match(candidate) {
                     return Some(BreachRecord {
@@ -173,36 +165,12 @@ impl BreachParser {
                         hash_type: Some(HashType::SHA256),
                         source: "LocalHashFile".to_string(),
                         breach_date: None,
-                        additional_data: HashMap::new(),
+                        additional_data: std::collections::HashMap::new(),
                     });
                 }
             }
         }
         
         None
-    }
-    
-    pub fn compute_hash(&self, input: &str, hash_type: HashType) -> String {
-        match hash_type {
-            HashType::MD5 => {
-                let digest = md5::compute(input);
-                format!("{:x}", digest)
-            }
-            HashType::SHA1 => {
-                let mut hasher = Sha1::new();
-                hasher.update(input.as_bytes());
-                format!("{:x}", hasher.finalize())
-            }
-            HashType::SHA256 => {
-                let mut hasher = Sha256::new();
-                hasher.update(input.as_bytes());
-                format!("{:x}", hasher.finalize())
-            }
-            _ => input.to_string(),
-        }
-    }
-    
-    fn is_valid_email(&self, email: &str) -> bool {
-        self.email_regex.is_match(email)
     }
 }
