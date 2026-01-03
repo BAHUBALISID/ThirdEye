@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]  // Added Eq and Hash
 pub struct EmailFinding {
     pub email: String,
     pub sources: Vec<BreachSource>,
@@ -35,7 +35,7 @@ pub enum Exposure {
     Partial,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]  // Added Eq and Hash
 pub enum HashType {
     MD5,
     SHA1,
