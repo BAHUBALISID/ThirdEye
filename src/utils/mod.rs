@@ -2,7 +2,6 @@ use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use anyhow::Result;
-use std::collections::HashMap;
 
 pub struct ProgressTracker {
     start_time: Instant,
@@ -115,18 +114,21 @@ pub fn parse_targets(input: &str) -> Vec<String> {
 }
 
 pub fn calculate_hash(data: &[u8], algorithm: &str) -> String {
+    use sha1::{Sha1, Digest as Sha1Digest};
+    use sha2::{Sha256, Digest as Sha256Digest};
+    
     match algorithm.to_lowercase().as_str() {
         "md5" => {
             let digest = md5::compute(data);
             format!("{:x}", digest)
         }
         "sha1" => {
-            let mut hasher = sha1::Sha1::new();
+            let mut hasher = Sha1::new();
             hasher.update(data);
             format!("{:x}", hasher.finalize())
         }
         "sha256" => {
-            let mut hasher = sha2::Sha256::new();
+            let mut hasher = Sha256::new();
             hasher.update(data);
             format!("{:x}", hasher.finalize())
         }
