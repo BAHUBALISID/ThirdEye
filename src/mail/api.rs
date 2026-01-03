@@ -39,15 +39,10 @@ impl ProxyNovaClient {
 #[async_trait]
 impl BreachApiClient for ProxyNovaClient {
     async fn query_email(&self, email: &str) -> Result<Vec<BreachRecord>> {
-        let mut records = Vec::new();
-        
-        // Check breach API (ethical, public endpoint)
-        let url = format!("{}/combos", self.base_url);
-        let params = [
-            ("query", email),
-            ("format", "json"),
-            ("limit", "100"),
-        ];
+    let url = format!("{}/combos", self.base_url); // https://api.proxynova.com/combos
+    let params = [("query", email), ("format", "json"), ("limit", "100")];
+    // ... sends HTTP request, parses JSON into BreachRecord structs
+}
         
         let response = timeout(
             Duration::from_secs(15),
@@ -219,3 +214,4 @@ fn parse_hibp_breach(breach: &Value, email: &str) -> BreachRecord {
         ]),
     }
 }
+
