@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]  // Added Eq and Hash
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmailFinding {
     pub email: String,
     pub sources: Vec<BreachSource>,
@@ -15,7 +15,7 @@ pub struct EmailFinding {
     pub metadata: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BreachSource {
     pub name: String,
     pub api_source: bool,
@@ -25,7 +25,7 @@ pub struct BreachSource {
     pub confidence: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Exposure {
     PlaintextCredential,
     HashedCredential(HashType),
@@ -35,7 +35,7 @@ pub enum Exposure {
     Partial,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]  // Added Eq and Hash
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum HashType {
     MD5,
     SHA1,
@@ -45,7 +45,7 @@ pub enum HashType {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PasswordHash {
     pub hash: String,
     pub hash_type: HashType,
