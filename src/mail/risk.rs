@@ -1,5 +1,5 @@
-use crate::mail::models::{EmailFinding, DomainFindings, Exposure, HashType};
-use crate::engine::scorer::{RiskScorer, RiskLevel};
+use crate::mail::models::{EmailFinding, Exposure, HashType};
+use crate::engine::scorer::RiskScorer;
 use std::collections::{HashMap, HashSet};
 
 pub struct RiskAssessor {
@@ -180,3 +180,4 @@ impl RiskAssessor {
         recommendations
     }
 }
+
