@@ -6,6 +6,7 @@ mod web;
 mod output;
 mod utils;
 
+use clap::Parser;  // Added import
 use cli::{Cli, Commands};
 use engine::runner::ScanRunner;
 use mail::MailScanner;
@@ -14,10 +15,10 @@ use std::io::{self, BufRead};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let cli = Cli::parse();  // Fixed parse method
     
     // Show disclaimer on first run
-    if !cli.quiet && !std::env::var("THIRDEYE_SILENT").is_ok() {
+    if !cli.quiet && std::env::var("THIRDEYE_SILENT").is_err() {
         show_disclaimer();
     }
     
@@ -27,7 +28,7 @@ async fn main() -> Result<()> {
             runner.scan(&target, recon, web, mail).await?;
         }
         Commands::Mail { target, file, domain, password_reuse, limit } => {
-            let scanner = MailScanner::new();
+            let mut scanner = MailScanner::new();  // Changed to mut
             
             // Handle input from stdin, file, or direct argument
             let targets = if let Some(t) = target {
