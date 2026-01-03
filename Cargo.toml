@@ -1,0 +1,46 @@
+[package]
+name = "thirdeye"
+version = "1.0.0"
+edition = "2021"
+description = "Advanced passive security intelligence tool"
+repository = "https://github.com/example/thirdeye"
+license = "MIT"
+authors = ["Security Team"]
+
+[features]
+default = []
+full = ["whois-rust", "trust-dns-resolver", "regex", "indicatif"]
+
+[dependencies]
+clap = { version = "4.0", features = ["derive", "env"] }
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+regex = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+rayon = "1.0"
+md5 = "0.7"
+sha1 = "0.10"
+sha2 = "0.10"
+async-trait = "0.1"
+atty = "0.2"
+indicatif = { version = "0.17", optional = true }
+ctrlc = "3.0"
+
+# Web scanning
+scraper = "0.12"
+
+# DNS and WHOIS (optional)
+trust-dns-resolver = { version = "0.22", features = ["tokio-runtime"], optional = true }
+whois-rust = { version = "2.0", optional = true }
+
+[dev-dependencies]
+tempfile = "3.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
