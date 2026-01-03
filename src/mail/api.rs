@@ -1,10 +1,11 @@
 use crate::mail::models::*;
-use reqwest::{Client, Response};
+use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
 use tokio::time::{timeout, Duration};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};  // Added import
 
 #[async_trait]
 pub trait BreachApiClient {
@@ -63,8 +64,8 @@ impl BreachApiClient for ProxyNovaClient {
         Ok(records)
     }
     
-    async fn query_domain(&self, domain: &str) -> Result<Vec<BreachRecord>> {
-        // Similar implementation for domain queries
+    async fn query_domain(&self, _domain: &str) -> Result<Vec<BreachRecord>> {
+        // ProxyNova doesn't support domain queries directly
         Ok(vec![])
     }
     
@@ -127,36 +128,45 @@ impl BreachApiClient for HIBPClient {
 
 pub struct ApiManager {
     clients: Vec<Box<dyn BreachApiClient>>,
-    rate_limiter: tokio::time::Interval,
 }
 
 impl ApiManager {
-    pub async fn query_email(&mut self, email: &str) -> Result<Vec<BreachRecord>> {
+    pub fn new() -> Self {
+        Self {
+            clients: Vec::new(),
+        }
+    }
+    
+    pub fn add_client(&mut self, client: Box<dyn BreachApiClient>) {
+        self.clients.push(client);
+    }
+    
+    pub async fn query_email(&self, email: &str) -> Result<Vec<BreachRecord>> {
         let mut all_records = Vec::new();
         
         for client in &self.clients {
-            // Respect rate limits
-            self.rate_limiter.tick().await;
-            
             match client.query_email(email).await {
                 Ok(records) => all_records.extend(records),
                 Err(e) => eprintln!("API error from {}: {}", client.get_source_name(), e),
             }
+            
+            // Simple rate limiting
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
         
         Ok(all_records)
     }
     
-    pub async fn query_domain(&mut self, domain: &str) -> Result<Vec<BreachRecord>> {
+    pub async fn query_domain(&self, domain: &str) -> Result<Vec<BreachRecord>> {
         let mut all_records = Vec::new();
         
         for client in &self.clients {
-            self.rate_limiter.tick().await;
-            
             match client.query_domain(domain).await {
                 Ok(records) => all_records.extend(records),
                 Err(e) => eprintln!("API error from {}: {}", client.get_source_name(), e),
             }
+            
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
         
         Ok(all_records)
@@ -200,7 +210,9 @@ fn parse_hibp_breach(breach: &Value, email: &str) -> BreachRecord {
         breach_date: breach.get("BreachDate")
             .and_then(|v| v.as_str())
             .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
-            .map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)),
+            .map(|d| DateTime::from_naive_utc_and_offset(
+                d.and_hms_opt(0, 0, 0).unwrap(), Utc
+            )),
         additional_data: HashMap::from([
             ("Title".to_string(), breach.get("Title").and_then(|v| v.as_str()).unwrap_or("").to_string()),
             ("Domain".to_string(), breach.get("Domain").and_then(|v| v.as_str()).unwrap_or("").to_string()),
